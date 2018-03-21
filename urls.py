@@ -8,9 +8,10 @@ import os
 from django.conf import settings
 from django.conf.urls import url
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
-from django.contrib.sitemaps import views as sitemap_views
 from django.utils import cache
 from django.views.static import serve
+
+from fastsitemaps import views as fastsitemaps
 
 import chronam.core.views as views
 from chronam.core.sitemaps import (BatchesSitemap, IssuesSitemap, PagesSitemap, TitlesSitemap)
@@ -39,8 +40,8 @@ sitemaps = {
 }
 
 urlpatterns = [
-    url(r'^sitemap\.xml$', sitemap_views.index, {'sitemaps': sitemaps}),
-    url(r'^sitemap-(?P<section>.+)\.xml$', sitemap_views.sitemap, {'sitemaps': sitemaps},
+    url(r'^sitemap\.xml$', fastsitemaps.index, {'sitemaps': sitemaps}),
+    url(r'^sitemap-(?P<section>.+)\.xml$', fastsitemaps.sitemap, {'sitemaps': sitemaps},
         name='django.contrib.sitemaps.views.sitemap'),
     url(r'^healthz$', views.static.healthz, name='health-check'),
     url(r'^$',
