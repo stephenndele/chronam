@@ -407,15 +407,14 @@ def page_search(d):
             q.append('+date:[%i TO %i]' % (d1, d2))
 
     ocrs = ['ocr_%s' % l for l in settings.SOLR_LANGUAGES]
-
     lang = d.get('language', None)
-
-    lang_full = models.Language.objects.get(code=str(lang)) if lang else None
-    if lang_full:
-        q.append('+language:%s' % lang_full)
-
+    ortext = d.get('ortext', None)
+    andtext = d.get('andtext', None)
+    phrasetext = d.get('phrasetext', None)
+    proxtext = d.get('proxtext', None)
     ocr_lang = 'ocr_' + lang if lang else 'ocr'
-    if d.get('ortext', None):
+    
+    if ortext:
         q.append('+((' + query_join(solr_escape(d['ortext']).split(' '), "ocr"))
         if lang:
             q.append(' AND ' + query_join(solr_escape(d['ortext']).split(' '), ocr_lang))
@@ -425,7 +424,7 @@ def page_search(d):
             for ocr  in ocrs:
                 q.append('OR ' + query_join(solr_escape(d['ortext']).split(' '), ocr))
         q.append(')')
-    if d.get('andtext', None):
+    if andtext:
         q.append('+((' + query_join(solr_escape(d['andtext']).split(' '), "ocr", and_clause=True))
         if lang:
             q.append('AND ' + query_join(solr_escape(d['andtext']).split(' '), ocr_lang, and_clause=True))
@@ -435,7 +434,7 @@ def page_search(d):
             for ocr in ocrs:
                 q.append('OR ' + query_join(solr_escape(d['andtext']).split(' '), ocr, and_clause=True))
         q.append(')')
-    if d.get('phrasetext', None):
+    if phrasetext:
         phrase = solr_escape(d['phrasetext'])
         q.append('+((' + 'ocr' + ':"%s"^10000' % (phrase))
         if lang:
@@ -447,7 +446,7 @@ def page_search(d):
                 q.append('OR ' + ocr + ':"%s"' % (phrase))
         q.append(')')
 
-    if d.get('proxtext', None):
+    if proxtext:
         distance = d.get('proxdistance', PROX_DISTANCE_DEFAULT)
         prox = solr_escape(d['proxtext'])
         q.append('+((' + 'ocr' + ':("%s"~%s)^10000' % (prox, distance))
@@ -461,6 +460,9 @@ def page_search(d):
         q.append(')')
     if d.get('sequence', None):
         q.append('+sequence:"%s"' % d['sequence'])
+
+    if not ortext and not andtext and not phrasetext and not proxtext:
+        q.append('+%s:*' % ocr_lang)
 
     solr_query = ' '.join(q)
     LOGGER.debug("Solr query is [%s]", solr_query)
