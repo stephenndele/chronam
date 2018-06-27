@@ -1,7 +1,8 @@
 import logging
+import os
 
 from datetime import datetime
-import os
+from multiprocessing.pool import ThreadPool
 from optparse import make_option
 
 from django.core.management.base import BaseCommand
@@ -41,14 +42,6 @@ class Command(BaseCommand):
     def xml_file_handler(self, marc_xml, skip_index):
         self.xml_start = datetime.now()
         results = title_loader.load(marc_xml)
-
-        if not skip_index:
-            # need to index any titles that we just created
-            LOGGER.info("indexing new titles")
-            index_titles(since=self.xml_start)
-
-        
-        return results
 
     def add_results(self, results):
         '''
@@ -90,14 +83,23 @@ class Command(BaseCommand):
         if os.path.isdir(marc_xml_source):
             marc_xml_dir = os.listdir(marc_xml_source)
 
+            all_marc_files = []
             for xml_file in marc_xml_dir:
-                results = None
                 xml_file_path = os.path.join(marc_xml_source, xml_file)
-                results = self.xml_file_handler(xml_file_path, skip_index)
-                total_results = self.add_results(results)
+                all_marc_files.append(xml_file_path)
+
+            pool = ThreadPool()
+            for result in pool.imap_unordered(title_loader.load, all_marc_files):
+                self.add_results(result)
                 self.files_processed += 1
 
             self.log_stats()
 
         else:
             results = self.xml_file_handler(marc_xml_source, skip_index)
+        
+        if not skip_index:
+            # need to index any titles that we just created
+            LOGGER.info("indexing new titles")
+            index_titles(since=self.start_time)
+
